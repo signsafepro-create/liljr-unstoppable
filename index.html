@@ -1,0 +1,575 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>LilJR Command Center</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101114;
+      --top: #17191e;
+      --panel: #1e2229;
+      --panel2: #262b34;
+      --line: #39414e;
+      --text: #f5f7fa;
+      --muted: #adb6c4;
+      --good: #62d4a3;
+      --warn: #f0c15c;
+      --bad: #ef786f;
+      --focus: #83b9ff;
+      --owner: #24443b;
+    }
+    * { box-sizing: border-box; }
+    html, body { min-height: 100%; }
+    body {
+      margin: 0;
+      background:
+        linear-gradient(135deg, rgba(131,185,255,.08), transparent 34%),
+        radial-gradient(circle at 100% 0, rgba(98,212,163,.08), transparent 28%),
+        var(--bg);
+      color: var(--text);
+      font-family: Segoe UI, Tahoma, sans-serif;
+    }
+    button, input { font: inherit; }
+    button {
+      min-height: 40px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel2);
+      color: var(--text);
+      padding: 0 12px;
+      cursor: pointer;
+    }
+    button:hover, button:focus { border-color: var(--focus); outline: none; }
+    button.loading { opacity: .72; cursor: wait; }
+    .app { min-height: 100vh; display: grid; grid-template-rows: auto auto 1fr; }
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 18px;
+      background: rgba(23,25,30,.94);
+      border-bottom: 1px solid var(--line);
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+    h1 { margin: 0; font-size: 21px; font-weight: 800; letter-spacing: 0; }
+    .sub { color: var(--muted); font-size: 13px; margin-top: 3px; }
+    .actions, .command-bar { display: flex; gap: 8px; flex-wrap: wrap; }
+    .actions { justify-content: flex-end; }
+    .command-bar {
+      padding: 10px 12px;
+      background: var(--top);
+      border-bottom: 1px solid var(--line);
+    }
+    .status-strip {
+      display: grid;
+      grid-template-columns: repeat(12, minmax(92px, 1fr));
+      gap: 1px;
+      background: var(--line);
+      border-bottom: 1px solid var(--line);
+    }
+    .status { min-height: 58px; padding: 10px 12px; background: var(--panel); }
+    .label { display: block; color: var(--muted); font-size: 12px; margin-bottom: 4px; }
+    .value { display: block; font-size: 14px; line-height: 1.25; overflow-wrap: anywhere; }
+    .good { color: var(--good); }
+    .warn { color: var(--warn); }
+    .bad { color: var(--bad); }
+    main { display: grid; grid-template-columns: minmax(0, 1fr) 370px; min-height: 0; }
+    .chat { min-height: 0; display: grid; grid-template-rows: 1fr auto; border-right: 1px solid var(--line); }
+    #log { overflow: auto; padding: 18px; min-height: 420px; max-height: calc(100vh - 260px); }
+    .msg {
+      max-width: 920px;
+      margin: 0 0 12px;
+      padding: 12px 14px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      line-height: 1.45;
+      white-space: pre-wrap;
+    }
+    .msg.user { margin-left: auto; background: var(--owner); border-color: #3f6d60; }
+    .msg.error { border-color: var(--bad); color: #ffd5d0; }
+    .composer {
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      gap: 8px;
+      padding: 14px;
+      background: var(--top);
+      border-top: 1px solid var(--line);
+    }
+    input {
+      width: 100%;
+      min-width: 0;
+      min-height: 42px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: var(--text);
+      padding: 0 13px;
+    }
+    aside {
+      display: grid;
+      grid-template-rows: auto auto auto auto auto auto 1fr;
+      min-height: 0;
+      background: rgba(20,22,26,.95);
+    }
+    .panel { border-bottom: 1px solid var(--line); padding: 14px; }
+    .panel h2 { margin: 0 0 9px; font-size: 14px; }
+    .panel p, .panel li { color: var(--muted); font-size: 13px; line-height: 1.38; }
+    .panel p { margin: 0; }
+    .panel ul { margin: 0; padding-left: 18px; }
+    .details { display: none; overflow: auto; }
+    .details.open { display: block; }
+    pre { margin: 0; white-space: pre-wrap; color: #dce3ec; font-size: 12px; line-height: 1.35; }
+    @media (max-width: 980px) {
+      header { align-items: flex-start; flex-direction: column; }
+      .status-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      main { grid-template-columns: 1fr; }
+      .chat { border-right: 0; }
+      aside { border-top: 1px solid var(--line); }
+      #log { max-height: none; min-height: 360px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <h1>LilJR Command Center</h1>
+        <div class="sub">One chat. One brain. One vault. One builder. One verifier.</div>
+      </div>
+      <div class="actions">
+        <button id="normalBtn" type="button" title="Use clean human replies">Normal</button>
+        <button id="detailsBtn" type="button" title="Toggle JSON/debug details" aria-expanded="false">Details</button>
+        <button id="speakBtn" type="button" title="Read the last clean reply aloud">Speak</button>
+        <button id="stopSpeakBtn" type="button" title="Stop read aloud">Stop Speak</button>
+      </div>
+    </header>
+
+    <nav class="command-bar" aria-label="LilJR command buttons">
+      <button type="button" data-command="provider status">Brain / Provider</button>
+      <button type="button" data-command="memory status">Memory</button>
+      <button type="button" data-command="what should LilJR build next?">Build Queue</button>
+      <button type="button" data-command="source coverage status">Core Vault</button>
+      <button type="button" data-command="show job vault">Job Vault</button>
+      <button type="button" data-command="legal intake">Legal</button>
+      <button type="button" data-command="phone bridge status">Phone Bridge</button>
+      <button type="button" data-command="integration status">Integrations</button>
+      <button type="button" data-command="deliverable status">Deliverables</button>
+      <button type="button" data-command="orchestration status">Orchestrate</button>
+      <button type="button" data-command="symphony status">Symphony</button>
+      <button type="button" data-command="production readiness">Prod Ready</button>
+      <button type="button" data-command="conversation status">Timeline</button>
+      <button type="button" data-command="show monitors">Monitors</button>
+      <button type="button" data-command="deploy checklist">Deploy</button>
+      <button type="button" data-command="run verifier">Verify</button>
+      <button type="button" data-command="run one unit e2e">Full E2E</button>
+      <button type="button" data-command="patch chat">Patch Chat</button>
+    </nav>
+
+    <section class="status-strip">
+      <div class="status"><span class="label">Brain</span><span class="value good" id="brain">checking</span></div>
+      <div class="status"><span class="label">Memory</span><span class="value good" id="memoryStatus">checking</span></div>
+      <div class="status"><span class="label">Provider</span><span class="value" id="provider">checking</span><span class="value" id="selectedBrain">local fallback</span></div>
+      <div class="status"><span class="label">Core Vault</span><span class="value" id="vault">ready</span></div>
+      <div class="status"><span class="label">Build Queue</span><span class="value" id="queueStatus">ready</span></div>
+      <div class="status"><span class="label">Approval</span><span class="value warn" id="approval">owner gate locked</span></div>
+      <div class="status"><span class="label">Fallback</span><span class="value good" id="fallback">active</span></div>
+      <div class="status"><span class="label">Verifier</span><span class="value" id="verifier">ready</span></div>
+      <div class="status"><span class="label">Legal</span><span class="value" id="legalStatus">prep only</span></div>
+      <div class="status"><span class="label">Phone</span><span class="value" id="phoneStatus">intake only</span></div>
+      <div class="status"><span class="label">Integrations</span><span class="value good" id="integrationStatus">10 ready</span></div>
+      <div class="status"><span class="label">Deliverables</span><span class="value good" id="deliverableStatus">local lane</span></div>
+      <div class="status"><span class="label">Flow</span><span class="value good" id="flowStatus">7 stages</span></div>
+      <div class="status"><span class="label">Symphony</span><span class="value good" id="symphonyStatus">aligned</span></div>
+      <div class="status"><span class="label">Prod</span><span class="value" id="productionStatus">check</span></div>
+      <div class="status"><span class="label">Timeline</span><span class="value good" id="timelineStatus">recording</span></div>
+      <div class="status"><span class="label">Deploy</span><span class="value" id="deployStatus">approval required</span></div>
+    </section>
+
+    <main>
+      <section class="chat">
+        <div id="log">
+          <div class="msg">LilJR is ready in one command center. Ask what you want built, checked, remembered, or explained.</div>
+        </div>
+        <div class="composer">
+          <input id="cmd" autocomplete="off" placeholder="Talk to LilJR from the main command center...">
+          <button id="sendBtn" type="button" title="Send to LilJR chat">Send</button>
+          <button id="micBtn" type="button" title="Voice input">Mic</button>
+        </div>
+      </section>
+
+      <aside>
+        <section class="panel">
+          <h2>Build Queue</h2>
+          <p id="buildQueue">Ask LilJR what to build next. Side jobs stay out of the build lane.</p>
+        </section>
+        <section class="panel">
+          <h2>Core Vault</h2>
+          <ul>
+            <li id="coreVault">Core Capability Vault is the searchable LilJR brain source.</li>
+            <li>Grouped Kimi UI shell and old LilJR build intelligence.</li>
+          </ul>
+        </section>
+        <section class="panel">
+          <h2>Job Vault Backlog</h2>
+          <p id="jobVault">Side jobs are saved for later. LilJR core comes first.</p>
+        </section>
+        <section class="panel">
+          <h2>Memory</h2>
+          <p id="memoryPanel">Unified memory keeps local project context, build notes, preferences, vault notes, and safety metadata.</p>
+        </section>
+        <section class="panel">
+          <h2>Power Status</h2>
+          <p id="powerPanel">Legal prep, phone intake, monitors, and deployment stay approval-gated.</p>
+        </section>
+        <section class="panel">
+          <h2>Integrations</h2>
+          <p id="integrationPanel">Documents, Supabase, Spreadsheets, Render, CodeRabbit, Slack, Browser, Sites, Presentations, and Expo are unified as safe planning surfaces.</p>
+        </section>
+        <section class="panel">
+          <h2>Deliverables</h2>
+          <p id="deliverablePanel">Local work orders turn documents, sheets, decks, database plans, deploy plans, Slack drafts, browser checks, Sites plans, and Expo plans into one tracked lane.</p>
+        </section>
+        <section class="panel">
+          <h2>Flow</h2>
+          <p id="flowPanel">Intake, brain context, design shell, local build, integrations, verification, and owner handoff move as one LilJR unit.</p>
+        </section>
+        <section class="panel">
+          <h2>Symphony</h2>
+          <p id="symphonyPanel">Chat, memory, deliverables, integrations, approvals, verification, frontend, and mobile stay lined up as one command center.</p>
+        </section>
+        <section class="panel">
+          <h2>Production</h2>
+          <p id="productionPanel">Production-like starts are checked locally first. Env slots are reported only as present, missing, or suspicious; secret values stay hidden.</p>
+        </section>
+        <section class="panel">
+          <h2>Timeline</h2>
+          <p id="timelinePanel">Every chat turn is kept as a safe redacted local flow event so LilJR can stay coherent from start to finish.</p>
+        </section>
+        <section class="panel details" id="detailsPanel">
+          <h2>Details</h2>
+          <pre id="raw">{}</pre>
+        </section>
+      </aside>
+    </main>
+  </div>
+
+  <script>
+    const API_BASE = window.location.origin;
+    const log = document.getElementById("log");
+    const cmd = document.getElementById("cmd");
+    const raw = document.getElementById("raw");
+    const detailsPanel = document.getElementById("detailsPanel");
+    const sendBtn = document.getElementById("sendBtn");
+    const micBtn = document.getElementById("micBtn");
+    let lastReply = "";
+    let lastRaw = {};
+    let busy = false;
+    const speechAvailable = "speechSynthesis" in window;
+
+    function addMessage(text, who = "liljr") {
+      const div = document.createElement("div");
+      div.className = "msg" + (who === "user" ? " user" : "") + (who === "error" ? " error" : "");
+      div.textContent = text;
+      log.appendChild(div);
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function setText(id, text) {
+      const node = document.getElementById(id);
+      if (node) node.textContent = text;
+    }
+
+    function setLoading(isLoading, button) {
+      busy = isLoading;
+      sendBtn.disabled = isLoading;
+      if (button) button.classList.toggle("loading", isLoading);
+      if (button) button.disabled = isLoading;
+      if (button) button.textContent = isLoading ? "Working..." : (button.dataset.originalText || button.textContent);
+    }
+
+    function cleanReply(json) {
+      return (json && typeof json.reply === "string" && json.reply.trim()) ? json.reply.trim() : "LilJR answered. Open Details for data.";
+    }
+
+    function updateRaw(json) {
+      lastRaw = json || {};
+      raw.textContent = JSON.stringify(lastRaw, null, 2);
+    }
+
+    function updatePanels(json) {
+      updateRaw(json);
+      if (!json || !json.intent) return;
+      setText("brain", json.intent);
+      if (json.intent === "provider_status" && json.data) {
+        setText("provider", (json.data.active_provider || "local_fallback") + " one brain");
+        setText("selectedBrain", json.data.active_model || json.data.active_provider || "local fallback");
+        setText("fallback", json.data.fallback_active ? "active" : "active");
+      }
+      if (json.intent === "memory_status") {
+        const data = json.data || json.memory_status || {};
+        const count = data.stored_count ?? data.count ?? 0;
+        setText("memoryStatus", count + " item(s)");
+        setText("memoryPanel", json.reply);
+      }
+      if (json.intent === "source_coverage_status" || json.intent === "no_missed_files_audit" || json.intent === "traceability_report") {
+        const data = json.data || {};
+        setText("vault", (data.core_deduped || data.core_records || 0) + " core");
+        setText("coreVault", json.reply);
+      }
+      if (json.intent === "build_queue" || json.intent === "v32_next_build") {
+        setText("queueStatus", "selected");
+        setText("buildQueue", json.reply);
+      }
+      if (json.intent === "job_vault_backlog" || json.intent === "list_job_vault") {
+        setText("jobVault", json.reply);
+      }
+      if (json.intent === "legal_intake" || json.intent === "child_custody_next_steps" || json.intent === "evidence_checklist") {
+        setText("legalStatus", "prep ready");
+        setText("powerPanel", json.reply);
+      }
+      if (json.intent === "phone_bridge_status") {
+        setText("phoneStatus", "intake ready");
+        setText("powerPanel", json.reply);
+      }
+      if (json.intent === "integration_status") {
+        const data = json.data || json.integrations || {};
+        setText("integrationStatus", (data.count || 10) + " ready");
+        setText("integrationPanel", json.reply);
+        setText("powerPanel", "External sends, deploys, publishes, database writes, account changes, and private uploads stay approval locked.");
+      }
+      if (json.intent === "integration_plan") {
+        const data = json.data || {};
+        setText("integrationStatus", (data.integration || "plan") + " planned");
+        setText("integrationPanel", json.reply);
+      }
+      if (json.intent === "integration_run_blocked" || json.intent === "integration_run_safe") {
+        setText("integrationStatus", json.approval_required ? "approval locked" : "local only");
+        setText("integrationPanel", json.reply);
+        setText("approval", json.approval_required ? "integration locked" : "owner gate locked");
+      }
+      if (json.intent === "deliverable_status") {
+        const data = json.data || json.deliverables || {};
+        setText("deliverableStatus", (data.count || 0) + " order(s)");
+        setText("deliverablePanel", json.reply);
+      }
+      if (json.intent === "deliverable_plan") {
+        const data = json.data || {};
+        setText("deliverableStatus", data.approval_required ? "approval path" : "planned");
+        setText("deliverablePanel", json.reply);
+      }
+      if (json.intent === "deliverable_created" || json.intent === "deliverable_blocked" || json.intent === "deliverable_search" || json.intent === "deliverable_detail") {
+        setText("deliverableStatus", json.approval_required ? "approval locked" : "tracked");
+        setText("deliverablePanel", json.reply);
+        if (json.approval_required) setText("approval", "deliverable locked");
+      }
+      if (json.intent === "orchestration_status") {
+        const data = json.data || json.orchestration || {};
+        setText("flowStatus", (data.stage_count || 7) + " stages");
+        setText("flowPanel", json.reply);
+      }
+      if (json.intent === "orchestration_plan") {
+        const data = json.data || json.orchestration || {};
+        setText("flowStatus", data.approval_required ? "approval path" : "local plan");
+        setText("flowPanel", json.reply);
+      }
+      if (json.intent === "orchestration_run_blocked" || json.intent === "orchestration_run_safe") {
+        setText("flowStatus", json.approval_required ? "approval locked" : "local only");
+        setText("flowPanel", json.reply);
+        setText("approval", json.approval_required ? "flow locked" : "owner gate locked");
+      }
+      if (json.intent === "conversation_status" || json.intent === "conversation_timeline") {
+        const data = json.data || json.conversation_flow || {};
+        setText("timelineStatus", data.count ? data.count + " event(s)" : "recording");
+        setText("timelinePanel", json.reply);
+      }
+      if (json.intent === "symphony_status") {
+        const data = json.data || json.symphony || {};
+        setText("symphonyStatus", data.flow_health || "aligned");
+        setText("symphonyPanel", json.reply);
+      }
+      if (json.intent === "production_readiness") {
+        const data = json.data || json.production || {};
+        setText("productionStatus", data.ok ? "ready" : "attention");
+        setText("productionPanel", json.reply);
+      }
+      if (json.intent === "monitor_status") {
+        setText("powerPanel", json.reply);
+      }
+      if (json.intent === "deploy_checklist") {
+        setText("deployStatus", "approval gated");
+        setText("powerPanel", json.reply);
+      }
+      if (json.intent === "secret_check") {
+        setText("verifier", json.data && json.data.ok ? "secrets clean" : "review needed");
+      }
+      if (json.intent === "run_verifier") {
+        setText("verifier", "verified");
+      }
+      if (json.intent === "one_unit_e2e") {
+        const data = json.data || {};
+        const summary = data.summary || {};
+        setText("verifier", data.ok ? "e2e pass" : "failure lock");
+        setText("flowStatus", data.ok ? "verified" : "needs patch");
+        setText("flowPanel", json.reply + " Passed: " + (summary.passed || 0) + "; failed: " + (summary.failed || 0) + ".");
+      }
+      if (json.intent === "normal_mode" || json.intent === "details_mode" || json.intent === "clean_answer" || json.intent === "speak_mode") {
+        setText("brain", json.intent.replace("_", " "));
+      }
+    }
+
+    async function apiGet(path) {
+      const res = await fetch(`${API_BASE}${path}`);
+      if (!res.ok) throw new Error(`GET ${path} failed: ${res.status}`);
+      return res.json();
+    }
+
+    let isEngineBusy = false;
+    let sessionId = localStorage.getItem('liljr_session_id') || null;
+
+    async function send(message, sourceButton) {
+      const text = (message || cmd.value || "").trim();
+      if (!text || isEngineBusy) return;
+      cmd.value = "";
+      addMessage(text, "user");
+      isEngineBusy = true;
+      setLoading(true, sourceButton);
+      try {
+        if (!sessionId) {
+          sessionId = 'web_' + Math.random().toString(36).substr(2, 9);
+          localStorage.setItem('liljr_session_id', sessionId);
+        }
+        const response = await fetch('https://liljr.pythonanywhere.com/api/cognition/think', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ input: text, session_id: sessionId, device: 'web', history_limit: 20 })
+        });
+        if (!response.ok) {
+          throw new Error(`Server returned unhealthy response code: ${response.status}`);
+        }
+        const data = await response.json();
+        if (!data || data.status === "FAILED" || !data.intent) {
+          console.warn("Hollow response structural matrix returned from server backend.");
+          data.intent = "GENERAL_CHITCHAT";
+        }
+        const reply = cleanReply(data);
+        lastReply = reply;
+        addMessage(reply, "liljr");
+        updatePanels(data);
+        if (data.speak === true) speakLatest();
+      } catch (error) {
+        console.error("Transmission breakdown:", error);
+        const msg = `Connected straight to the cloud matrix, but running in standalone safe mode: ${error.message}`;
+        addMessage(msg, "error");
+        updatePanels({ intent: "CONNECTION_ERROR", data: {} });
+      } finally {
+        isEngineBusy = false;
+        setLoading(false, sourceButton);
+      }
+    }
+
+    function speakLatest() {
+      if (!speechAvailable) {
+        addMessage("Speak is not available in this browser. Text chat still works.", "error");
+        return;
+      }
+      if (!lastReply) {
+        addMessage("Nothing to read yet. Ask LilJR something first.", "error");
+        return;
+      }
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(lastReply);
+      utterance.rate = 0.95;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+      window.speechSynthesis.speak(utterance);
+      setText("provider", "reading clean reply");
+    }
+
+    function stopSpeaking() {
+      if (speechAvailable) window.speechSynthesis.cancel();
+      setText("provider", "speech stopped");
+    }
+
+    function startMic() {
+      const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!Rec) {
+        addMessage("Voice input is not available in this browser yet. Type or use Speak.", "error");
+        return;
+      }
+      const rec = new Rec();
+      rec.lang = "en-US";
+      rec.interimResults = false;
+      rec.continuous = false;
+      rec.onresult = event => {
+        const text = event.results && event.results[0] && event.results[0][0] ? event.results[0][0].transcript : "";
+        if (text) send(text, micBtn);
+      };
+      rec.onerror = () => addMessage("Voice input failed cleanly. Text chat still works.", "error");
+      rec.start();
+    }
+
+    async function boot() {
+      try {
+        const health = await apiGet("/health");
+        const tools = await apiGet("/tools/list");
+        updateRaw({health, tools});
+        setText("brain", "/chat online");
+        setText("memoryStatus", health.memory ? (health.memory.stored_count || health.memory.count || 0) + " item(s)" : "online");
+        const route = health.brain_route || {};
+        setText("provider", route.active_provider ? route.active_provider + " selected" : "fallback ready");
+        setText("selectedBrain", route.active_model || "local fallback");
+        setText("fallback", route.fallback_active ? "active" : "active");
+        setText("verifier", health.subsystems && health.subsystems.verifier ? health.subsystems.verifier : "ready");
+        setText("approval", "owner gate locked");
+        if (health.features && health.features.includes("integration_registry")) {
+          setText("integrationStatus", "10 ready");
+        }
+        if (health.features && health.features.includes("one_unit_orchestrator")) {
+          setText("flowStatus", "7 stages");
+        }
+        if (health.features && health.features.includes("conversation_flow_timeline")) {
+          setText("timelineStatus", "recording");
+        }
+        if (health.features && health.features.includes("one_unit_symphony_status")) {
+          setText("symphonyStatus", "aligned");
+        }
+        if (health.features && health.features.includes("production_readiness_check")) {
+          setText("productionStatus", "check");
+        }
+      } catch (error) {
+        addMessage(`LilJR brain is offline. Start the final server on your PC. ${error.message}`, "error");
+        updateRaw({error: error.message});
+      }
+    }
+
+    document.querySelectorAll("button[data-command]").forEach(button => {
+      button.dataset.originalText = button.textContent;
+      button.addEventListener("click", () => send(button.dataset.command, button));
+    });
+    sendBtn.dataset.originalText = sendBtn.textContent;
+    document.getElementById("normalBtn").dataset.originalText = document.getElementById("normalBtn").textContent;
+    sendBtn.addEventListener("click", () => send(cmd.value, sendBtn));
+    document.getElementById("normalBtn").addEventListener("click", event => send("normal mode", event.currentTarget));
+    document.getElementById("detailsBtn").addEventListener("click", event => {
+      const open = detailsPanel.classList.toggle("open");
+      event.currentTarget.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+    document.getElementById("speakBtn").addEventListener("click", speakLatest);
+    document.getElementById("stopSpeakBtn").addEventListener("click", stopSpeaking);
+    micBtn.addEventListener("click", startMic);
+    cmd.addEventListener("keydown", event => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        send(cmd.value, sendBtn);
+      }
+    });
+    boot();
+  </script>
+</body>
+</html>

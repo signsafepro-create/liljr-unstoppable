@@ -1,0 +1,6 @@
+﻿.env
+*.txt
+*.jsonl
+*.db*
+__pycache__/
+backups/

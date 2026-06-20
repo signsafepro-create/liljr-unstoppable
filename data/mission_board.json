@@ -1,0 +1,137 @@
+[
+  {
+    "id": "mission_a596dc4475",
+    "title": "Agent 14 requesting system status.",
+    "source": "chat",
+    "status": "active",
+    "created_at": "2026-06-18T08:05:17Z",
+    "tasks": [
+      {
+        "id": "task_237560db",
+        "mission_id": "mission_a596dc4475",
+        "title": "Plan mission",
+        "status": "done"
+      },
+      {
+        "id": "task_6833b16a",
+        "mission_id": "mission_a596dc4475",
+        "title": "Route to swarm shells",
+        "status": "active"
+      },
+      {
+        "id": "task_f4998327",
+        "mission_id": "mission_a596dc4475",
+        "title": "Verify output",
+        "status": "queued"
+      }
+    ]
+  },
+  {
+    "id": "mission_455f89bcf7",
+    "title": "Agent 9 requesting system status.",
+    "source": "chat",
+    "status": "active",
+    "created_at": "2026-06-18T08:05:17Z",
+    "tasks": [
+      {
+        "id": "task_1c65f391",
+        "mission_id": "mission_455f89bcf7",
+        "title": "Plan mission",
+        "status": "done"
+      },
+      {
+        "id": "task_6d5d9738",
+        "mission_id": "mission_455f89bcf7",
+        "title": "Route to swarm shells",
+        "status": "active"
+      },
+      {
+        "id": "task_0296793f",
+        "mission_id": "mission_455f89bcf7",
+        "title": "Verify output",
+        "status": "queued"
+      }
+    ]
+  },
+  {
+    "id": "mission_7372a80b45",
+    "title": "Agent 6 requesting system status.",
+    "source": "chat",
+    "status": "active",
+    "created_at": "2026-06-18T08:05:17Z",
+    "tasks": [
+      {
+        "id": "task_5f2b3f5a",
+        "mission_id": "mission_7372a80b45",
+        "title": "Plan mission",
+        "status": "done"
+      },
+      {
+        "id": "task_3ecfe041",
+        "mission_id": "mission_7372a80b45",
+        "title": "Route to swarm shells",
+        "status": "active"
+      },
+      {
+        "id": "task_71189db8",
+        "mission_id": "mission_7372a80b45",
+        "title": "Verify output",
+        "status": "queued"
+      }
+    ]
+  },
+  {
+    "id": "mission_501dbc2418",
+    "title": "FIX ANY BUG",
+    "source": "chat",
+    "status": "active",
+    "created_at": "2026-06-18T08:07:53Z",
+    "tasks": [
+      {
+        "id": "task_78613e8a",
+        "mission_id": "mission_501dbc2418",
+        "title": "Plan mission",
+        "status": "done"
+      },
+      {
+        "id": "task_b1fa8af7",
+        "mission_id": "mission_501dbc2418",
+        "title": "Route to swarm shells",
+        "status": "active"
+      },
+      {
+        "id": "task_0e04e417",
+        "mission_id": "mission_501dbc2418",
+        "title": "Verify output",
+        "status": "queued"
+      }
+    ]
+  },
+  {
+    "id": "mission_84b1877b97",
+    "title": "FIX ANY BUG",
+    "source": "chat",
+    "status": "active",
+    "created_at": "2026-06-18T08:07:58Z",
+    "tasks": [
+      {
+        "id": "task_5205e2d4",
+        "mission_id": "mission_84b1877b97",
+        "title": "Plan mission",
+        "status": "done"
+      },
+      {
+        "id": "task_aa5c41e3",
+        "mission_id": "mission_84b1877b97",
+        "title": "Route to swarm shells",
+        "status": "active"
+      },
+      {
+        "id": "task_b8e1a66b",
+        "mission_id": "mission_84b1877b97",
+        "title": "Verify output",
+        "status": "queued"
+      }
+    ]
+  }
+]
